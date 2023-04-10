@@ -8,6 +8,7 @@
 #include <stdlib.h>		
 #include "Glut.h"
 #include <time.h>
+#include "RgbImage.h"
 
 
 
@@ -15,6 +16,7 @@
 
 constexpr auto FPS = 80.0;
 
+static GLuint textureName[4];
 
 
 int frame_count = 0;
@@ -99,6 +101,63 @@ public:
 	}
 };
 
+class Enemy {
+
+public:
+	float x, y;  // position
+	float speed; // movement speed
+	float accel = 5; // accelleration
+	float velocity_x, velocity_y; // velocity
+	float collition_width = 0.2, collition_height = 0.2;
+	float gravity = -0.01f;
+	int dir = 1; // 1 up -1 down // for tree enemy
+
+	Enemy(float start_x, float start_y, float enemy_speed, int type) {
+		x = start_x;
+		y = start_y;
+		speed = enemy_speed;
+		//type side enemy going up down on trees 0
+		//type walking enemy going left right 1
+		if (type == 0) {
+			gravity = 0.0;
+		}
+	}
+
+	void move(float dt, float dx, float dy) {
+
+
+
+		// Update the velocity based on the acceleration
+		velocity_x += dx * accel * dt;
+		velocity_y += dy * accel * dt;
+
+		float friction = 0.01f;
+		velocity_x -= friction * velocity_x * dt;
+		velocity_y -= friction * velocity_y * dt;
+
+		// Add gravity to the velocity_y
+		velocity_y += gravity * dt;
+
+		// Limit the velocity to the maximum speed
+		float velocity_mag = sqrt(velocity_x * velocity_x + velocity_y * velocity_y);
+		if (velocity_mag > speed) {
+			velocity_x *= speed / velocity_mag;
+			velocity_y *= speed / velocity_mag;
+		}
+
+
+
+		x += velocity_x * dt;
+		y += velocity_y * dt;
+	}
+
+	void draw() {
+
+		glColor3f(1, 0, 0);
+		glRectf(x - 0.1, y - 0.1, x + 0.1, y + 0.1);
+	}
+};
+
 class Box {
 public:
 	float x, y;
@@ -127,6 +186,14 @@ public:
 
 	}
 
+	Box(Enemy enemy) {
+		x = enemy.x - (enemy.collition_width / 2);
+		y = enemy.y - (enemy.collition_height / 2);
+		width = enemy.collition_width;
+		height = enemy.collition_height;
+
+	}
+
 	void draw(void) {
 		glColor3f(rc, gc, bc);
 		glRectf(x, y, x + width, y + height);
@@ -139,14 +206,66 @@ public:
 };
 
 
+
 Player player(1.5, 1.5, 0.0007);
 Box player_collition(player);
 
+Enemy enemy_1(2.85, 1.5, 0.0003, 0);
+Box enemy_1_collition(enemy_1);
+
+Enemy enemy_2(0.15, 1.5, 0.0003, 0);
+Box enemy_2_collition(enemy_2);
+
 Box boxes[8];
+Enemy* enemies[2] = {&enemy_1, &enemy_2};
 
 
 
 
+
+void loadTextureFromFile(const char* filename)
+{
+	glClearColor(1.0, 1.0, 1.0, 1.0);
+	//glShadeModel(GL_FLAT);
+	//glEnable(GL_DEPTH_TEST);
+
+	RgbImage theTexMap(filename);
+
+	// Pixel alignment: each row is word aligned.  Word alignment is the default. 
+	// glPixelStorei(GL_UNPACK_ALIGNMENT, 4);		
+
+	// Set the interpolation settings to best quality.
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB,
+		theTexMap.GetNumCols(), theTexMap.GetNumRows(),
+		GL_RGB, GL_UNSIGNED_BYTE, theTexMap.ImageData());
+
+}
+
+void initFour(const char* filenames[])
+{
+	glGenTextures(4, textureName);	// Load four texture names into array
+	for (int i = 0; i < 4; i++) {
+		glBindTexture(GL_TEXTURE_2D, textureName[i]);	// Texture #i is active now
+		loadTextureFromFile(filenames[i]);			// Load texture #i
+	}
+}
+
+void drawTextureQuad(int i) {
+	glBindTexture(GL_TEXTURE_2D, textureName[i]);
+
+	glBegin(GL_QUADS);
+	glTexCoord2f(0.0, 0.0); glVertex3f(-1.0, -1.0, 0.0);
+	glTexCoord2f(0.0, 1.0); glVertex3f(-1.0, 1.0, 0.0);
+	glTexCoord2f(1.0, 1.0); glVertex3f(1.0, 1.0, 0.0);
+	glTexCoord2f(1.0, 0.0); glVertex3f(1.0, -1.0, 0.0);
+	glEnd();
+
+}
 
 void updateFPS() {
 	final_time = time(NULL);
@@ -201,11 +320,6 @@ void input_released(unsigned char key, int x, int y) {
 
 void mySpecialKeyFunc(int key, int x, int y)
 {
-
-}
-
-
-void draw_player(void) {
 
 }
 
@@ -265,7 +379,7 @@ bool checkCollision(float player_x, float player_y, float player_w, float player
 }
 
 
-void update(int) {
+void update(int) {  //something like physics proccess in godot
 
 	// Compute dt (time since last frame)
 	static double prev_time = 0;
@@ -281,7 +395,7 @@ void update(int) {
 
 	player.move(dt, dx, dy);
 
-	for (int j = i + 1; j < 8; j++) {
+	for (int j = 0; j < 8; j++) {
 		if (checkCollision(player.x + dx, player.y + dy, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height)) {
 			boxes[j].rc = 1;
 			boxes[j].gc = 1;
@@ -293,6 +407,16 @@ void update(int) {
 			boxes[j].bc = 1;
 		}
 	}
+
+	float dxe = 0, dye = 0;
+	for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
+		dye += enemies[i]->dir * 0.01;
+		if (enemies[i]->y + (enemies[i]->collition_height / 2) + dye > Ymax  || (enemies[i]->y - (enemies[i]->collition_height / 2) + dye < Ymin)) {
+			enemies[i]->dir = enemies[i]->dir * -1;
+		}
+		enemies[i]->move(dt, dxe, dye);
+	}
+
 
 	if (run_mode == 1) {
 		glutPostRedisplay();	// Trigger an automatic redraw for animation
@@ -307,29 +431,32 @@ void update(int) {
 void drawScene(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	/*glEnable(GL_TEXTURE_2D);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-
+	glPushMatrix();
+	glTranslatef(-2.1f, 2.1f, 0.0f);
+	drawTextureQuad(0);
+	glPopMatrix();*/
 
 	player_collition.x = player.x - (player.collition_width / 2);
 	player_collition.y = player.y - (player.collition_height / 2);
 	player_collition.draw();
 
+	glPushMatrix();
+	for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
+		enemies[i]->draw();
 
+	}
+	/*enemy_1.draw();
+	enemy_1_collition.x = enemy_1.x - (enemy_1.collition_width / 2);
+	enemy_1_collition.y = enemy_1.y - (enemy_1.collition_height / 2);
+	enemy_1_collition.draw();*/
+	glPopMatrix();
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 8; i++) {  //level
 		boxes[i].draw();
 	}
-
-
-	//glRectf(0, 0, 3, 1); 
-	/*glColor3f(1, 0, 1);
-	glRectf(boxes[0].x, boxes[0].y, boxes[0].x + boxes[0].width, boxes[0].y + boxes[0].height);
-
-	glColor3f(1, 0, 1);
-	glRectf(0.3, 1.4, 0.5, 1.6);
-
-	glColor3f(1, 0, 1);
-	glRectf(0.6, 2.6, 0.7, 2.9);*/
 
 	glBegin(GL_POINTS);
 	glColor3f(0, 0, 0);
@@ -338,13 +465,18 @@ void drawScene(void)
 
 
 	glPushMatrix();
-
 	player.draw();
 
 	glPopMatrix();
+
+	
+
+	
 	// Flush the pipeline, swap the buffers
 	glFlush();
+	//glDisable(GL_TEXTURE_2D);
 	glutSwapBuffers();
+
 	updateFPS();
 
 }
@@ -387,6 +519,12 @@ void resizeWindow(int w, int h)
 
 }
 
+const char* filenameArray[4] = {
+		"kangaro_idle-export.bmp",
+		"LightningTexture.bmp",
+		"IvyTexture.bmp",
+		"RedLeavesTexture.bmp"
+};
 
 int main(int argc, char** argv)
 {
@@ -396,9 +534,9 @@ int main(int argc, char** argv)
 	boxes[1] = Box(0.3, 1.4, 0.2, 0.2);
 	boxes[2] = Box(0.7, 2.5, 0.5, 0.3);
 	boxes[3] = Box(0, 2.9, 3, 0.1);  // screen edges
-	boxes[4] = Box(0, 0, 0.1, 3);	// screen edges
+	boxes[4] = Box(0, 0, 0.3, 3);	// screen edges
 	boxes[5] = Box(0, 0, 3, 0.1);   // screen edges
-	boxes[6] = Box(2.9, 0, 0.1, 3); // screen edges
+	boxes[6] = Box(2.7, 0, 0.3, 3); // screen edges
 	boxes[7] = Box(0, 1, 3, 0.1);
 
 	glutInit(&argc, argv);
@@ -411,9 +549,9 @@ int main(int argc, char** argv)
 	//preimenovati u Kolokvijum_ime_prezime (npr. Kolokvijum_Tijana_Sustersic)
 
 	glutCreateWindow("Projektni zadatak");
-
+	
 	initRendering();
-
+	//initFour(filenameArray);
 	glutKeyboardFunc(myKeyboardFunc);
 	glutSpecialFunc(mySpecialKeyFunc);
 	glutKeyboardUpFunc(input_released);

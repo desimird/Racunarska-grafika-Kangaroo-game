@@ -24,6 +24,9 @@
     <ClInclude Include="kolokvijum_header.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RgbImage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Library Include="glut32.lib">
@@ -32,6 +35,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RgbImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

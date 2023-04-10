@@ -129,12 +129,14 @@
   <ItemGroup>
     <ClInclude Include="Glut.h" />
     <ClInclude Include="kolokvijum_header.h" />
+    <ClInclude Include="RgbImage.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="glut32.lib" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RgbImage.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="D:\grafika\Projekat\kangaro_idle.png" />
