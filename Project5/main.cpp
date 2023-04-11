@@ -9,7 +9,8 @@
 #include "Glut.h"
 #include <time.h>
 #include "RgbImage.h"
-
+#include <vector>
+#include <iterator>
 
 
 
@@ -109,15 +110,18 @@ public:
 	float accel = 5; // accelleration
 	float velocity_x, velocity_y; // velocity
 	float collition_width = 0.2, collition_height = 0.2;
-	float gravity = -0.01f;
+	float gravity = -0.1f;
 	int dir = 1; // 1 up -1 down // for tree enemy
+	int type;
+	bool is_alive = 1;
 
-	Enemy(float start_x, float start_y, float enemy_speed, int type) {
+	Enemy(float start_x, float start_y, float enemy_speed, int type_e) {
 		x = start_x;
 		y = start_y;
 		speed = enemy_speed;
 		//type side enemy going up down on trees 0
 		//type walking enemy going left right 1
+		type = type_e;
 		if (type == 0) {
 			gravity = 0.0;
 		}
@@ -151,10 +155,93 @@ public:
 		y += velocity_y * dt;
 	}
 
+
+	bool checkCollision(float box_x, float box_y, float box_w, float box_h) {
+		// Calculate the half-widths and half-heights of the player and the box
+		float half_w = collition_width / 2;
+		float half_h = collition_height / 2;
+		float box_half_w = box_w / 2;
+		float box_half_h = box_h / 2;
+
+		// Calculate the centers of the player and the box
+		float player_center_x = x;
+		float player_center_y = y;
+		float box_center_x = box_x + box_half_w;
+		float box_center_y = box_y + box_half_h;
+
+		// Calculate the minimum and maximum distances between the centers of the player and the box
+		float dx = fabs(player_center_x - box_center_x);
+		float dy = fabs(player_center_y - box_center_y);
+		float min_dist_x = half_w + box_half_w;
+		float min_dist_y = half_h + box_half_h;
+
+		// Check if there is an overlap between the player and the box
+		if (dx <= min_dist_x && dy <= min_dist_y) {
+			// Calculate the amount to move the player out of the box
+			float overlap_x = min_dist_x - dx;
+			float overlap_y = min_dist_y - dy;
+
+			// Move the player out of the box
+			if (overlap_x < overlap_y) {
+				if (player_center_x < box_center_x) {
+					x -= overlap_x;
+					velocity_x = 0;
+					dir = -1;
+				}
+				else {
+					x += overlap_x;
+					velocity_x = 0;
+					dir = 1;
+				}
+			}
+			else {
+				if (player_center_y < box_center_y) {
+					y -= overlap_y;
+					velocity_y = 0;
+				}
+				else {
+					y += overlap_y;
+					velocity_y = 0;
+				}
+			}
+
+			// Collision detected
+			return true;
+		}
+
+		// No collision
+		return false;
+	}
+
+
 	void draw() {
 
 		glColor3f(1, 0, 0);
 		glRectf(x - 0.1, y - 0.1, x + 0.1, y + 0.1);
+	}
+};
+
+class Projectile {
+public:
+	float x, y;  // position
+	float speed; // movement speed
+	float collition_width = 0.05, collition_height = 0.05;
+	int dir = 1; // 1 right -1 left
+
+	Projectile(float start_x, float start_y, float projectile_speed, int direction) {
+		x = start_x;
+		y = start_y;
+		speed = projectile_speed;
+		dir = direction;
+	}
+
+	void move(void) {
+		x += dir * speed;
+	}
+
+	void draw() {
+		glColor3f(1, 1, 0);
+		glRectf(x, y, x + collition_width, y +collition_height);
 	}
 };
 
@@ -216,9 +303,14 @@ Box enemy_1_collition(enemy_1);
 Enemy enemy_2(0.15, 1.5, 0.0003, 0);
 Box enemy_2_collition(enemy_2);
 
-Box boxes[8];
-Enemy* enemies[2] = {&enemy_1, &enemy_2};
+Enemy enemy_3(1.1, 1.5, 0.0003, 1);
+Box enemy_3_collition(enemy_3);
 
+Box boxes[8];
+Enemy* enemies[3] = {&enemy_1, &enemy_2, &enemy_3};
+
+
+std::vector<Projectile*> projectiles = {};
 
 
 
@@ -408,13 +500,48 @@ void update(int) {  //something like physics proccess in godot
 		}
 	}
 
-	float dxe = 0, dye = 0;
+	
 	for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
-		dye += enemies[i]->dir * 0.01;
-		if (enemies[i]->y + (enemies[i]->collition_height / 2) + dye > Ymax  || (enemies[i]->y - (enemies[i]->collition_height / 2) + dye < Ymin)) {
-			enemies[i]->dir = enemies[i]->dir * -1;
+		float dxe = 0, dye = 0;
+		if (enemies[i]->is_alive) {
+			if (enemies[i]->type == 0) {
+				dye += enemies[i]->dir * 0.01;
+				if (enemies[i]->y + (enemies[i]->collition_height / 2) + dye > Ymax || (enemies[i]->y - (enemies[i]->collition_height / 2) + dye < Ymin)) {
+					enemies[i]->dir = enemies[i]->dir * -1;
+				}
+
+				if (enemies[i]->y > player.y - 0.02 && enemies[i]->y < player.y + 0.02) {
+
+					if (enemies[i]->x > player.x) {
+						printf("jeste1");
+						Projectile* project_inst = new Projectile(enemies[i]->x, enemies[i]->y, 0.005, -1);
+						projectiles.push_back(project_inst);
+					}
+					else {
+						Projectile* project_inst = new Projectile(enemies[i]->x, enemies[i]->y, 0.005, 1);
+						projectiles.push_back(project_inst);
+					}
+				}
+			}
+			if (enemies[i]->type == 1) {
+
+				dxe += enemies[i]->dir * 0.01;
+				if (enemies[i]->x + (enemies[i]->collition_width / 2) + dxe > Xmax || (enemies[i]->x - (enemies[i]->collition_width / 2) + dxe < Xmin)) {
+					enemies[i]->dir = enemies[i]->dir * -1;
+				}
+			}
+
+			enemies[i]->move(dt, dxe, dye);
+
+			if (enemies[i]->type == 1) {
+				for (j = 0; j < sizeof(boxes) / sizeof(boxes[0]); j++) {
+					enemies[i]->checkCollision(boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height);
+					if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, enemies[i]->x - (enemies[i]->collition_width / 2), enemies[i]->y - (enemies[i]->collition_height / 2), enemies[i]->collition_width, enemies[i]->collition_height)) {
+						enemies[i]->is_alive = false; //logic for "combat"
+					}
+				}
+			}
 		}
-		enemies[i]->move(dt, dxe, dye);
 	}
 
 
@@ -445,7 +572,10 @@ void drawScene(void)
 
 	glPushMatrix();
 	for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
-		enemies[i]->draw();
+		if (enemies[i]->is_alive) {
+			enemies[i]->draw();
+		}
+		
 
 	}
 	/*enemy_1.draw();
@@ -469,7 +599,27 @@ void drawScene(void)
 
 	glPopMatrix();
 
+	glPushMatrix();
+
+	if (!projectiles.empty()) {
+		// Iterate over the projectiles in the vector
+		for (auto it = projectiles.begin(); it != projectiles.end();) {
+			int index = std::distance(projectiles.begin(), it);
+			// Do something with the projectile, for example:
+			//printf("jeste");
+			(*it)->move();
+			(*it)->draw();
+			float off = (*it)->speed * (*it)->dir;
+			if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, (*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
+				delete (*it);
+				it = projectiles.erase(it);
+			}else {
+				++it;
+			}
+		}
+	}
 	
+	glPopMatrix();
 
 	
 	// Flush the pipeline, swap the buffers
@@ -538,6 +688,9 @@ int main(int argc, char** argv)
 	boxes[5] = Box(0, 0, 3, 0.1);   // screen edges
 	boxes[6] = Box(2.7, 0, 0.3, 3); // screen edges
 	boxes[7] = Box(0, 1, 3, 0.1);
+
+	//Projectile*  project_inst = new Projectile(1.7, 1.7, 0.001, -1);
+	//projectiles.push_back(project_inst);
 
 	glutInit(&argc, argv);
 
