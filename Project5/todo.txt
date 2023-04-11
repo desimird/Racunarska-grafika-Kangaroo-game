@@ -1,0 +1,5 @@
+put all arrays in std::vectors
+tweek movement
+jump/double jump
+think of what to do with textures
+ui
