@@ -5,4 +5,4 @@ jump/double jump almost ready watch out for collition problem when coliding with
 think of what to do with textures
 ui
 
-
+add hp player
