@@ -470,9 +470,9 @@ void mySpecialKeyFunc(int key, int x, int y)
 }
 
 bool checkCollision(float player_x, float player_y, float player_w, float player_h, float box_x, float box_y, float box_w, float box_h) {
-	if (check_coll_called_move_towards) {
-		printf("%i\n", check_coll_called_move_towards);
-	}
+	//if (check_coll_called_move_towards) {
+	//	printf("%i\n", check_coll_called_move_towards);
+	//}
 		
 	// Calculate the half-widths and half-heights of the player and the box
 	float player_half_w = player_w / 2;
@@ -531,7 +531,7 @@ bool checkCollision(float player_x, float player_y, float player_w, float player
 					player.y += overlap_y;
 					player.velocity_y = 0;
 					player.on_ground = true;
-					player.jump_amount = 0;
+					//player.jump_amount = 0;
 				}
 				//player.y += overlap_y;
 				
@@ -547,12 +547,12 @@ bool checkCollision(float player_x, float player_y, float player_w, float player
 	}
 
 	// No collision
-	//player.on_ground = false;
+	player.on_ground = false;
 	
 }
 
 void move_towards(float target_x, float target_y) {
-	printf("22");
+	//printf("22");
 	// Calculate the vector from current position to target position
 	float dx = target_x - player.x;
 	float dy = target_y - player.y;
@@ -571,7 +571,7 @@ void move_towards(float target_x, float target_y) {
 		if (!player.on_ground) {
 			for (int i = 0; i < 8; i++) {
 				check_coll_called_move_towards = false;
-				printf("%i is there collition \n", checkCollision(player.x + dx * ratio, player.y + dy * ratio, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height));
+				//printf("%i is there collition \n", checkCollision(player.x + dx * ratio, player.y + dy * ratio, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height));
 				if (checkCollision(player.x + dx * ratio, player.y + dy * ratio, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height)) {
 					check_coll_called_move_towards = false;
 
@@ -638,10 +638,13 @@ void update(int) {  //something like physics proccess in godot
 				// Air jump ("double-jump"):
 			}
 			else {
-				if (player.jump_amount++ <= player.jump_amount_max)
-					//move_towards(player.x + dx, player.y + player.jump_height);
-					printf(" ");
+				printf("%i\n", player.jump_amount++);
+				if (player.jump_amount++ <= player.jump_amount_max) {
 
+					move_towards(player.x + dx, player.y + player.jump_height);
+					dy += 0.01;
+					printf(" ");
+				}
 			}
 
 			up_key_pressed = false;
