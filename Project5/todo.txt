@@ -1,5 +1,8 @@
 put all arrays in std::vectors
 tweek movement
-jump/double jump
+jump/double jump almost ready watch out for collition problem when coliding with more then one object and jump 
+
 think of what to do with textures
 ui
+
+

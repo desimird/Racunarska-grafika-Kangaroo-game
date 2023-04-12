@@ -11,8 +11,7 @@
 #include "RgbImage.h"
 #include <vector>
 #include <iterator>
-
-
+#include <algorithm>
 
 
 constexpr auto FPS = 80.0;
@@ -45,8 +44,11 @@ bool up_key_pressed = false;
 bool down_key_pressed = false;
 bool right_key_pressed = false;
 bool left_key_pressed = false;
+bool player_shoot_key = false;
 
 bool is_colliding = false;
+bool check_coll_called_move_towards = false;
+
 
 
 
@@ -58,7 +60,19 @@ public:
 	float accel = 5; // accelleration
 	float velocity_x, velocity_y; // velocity
 	float collition_width = 0.2, collition_height = 0.2;
-	float gravity = -0.01f;
+	float gravity = -0.0003f;
+	bool jump = false;
+	int jump_amount = 0;
+	int jump_steps_after = 0;
+	int jump_steps_after_duration = 16;
+	float jump_height = 0.017;
+	int jump_amount_max = 2;
+	float jump_force = 0.02;
+	int dir = 1; // 1 right -1 left
+
+	float min_speed_y = 0.001;
+	int on_ground = 0;
+
 
 	Player(float start_x, float start_y, float player_speed) {
 		x = start_x;
@@ -66,9 +80,10 @@ public:
 		speed = player_speed;
 	}
 
+
+	
+
 	void move(float dt, float dx, float dy) {
-
-
 
 		// Update the velocity based on the acceleration
 		velocity_x += dx * accel * dt;
@@ -80,20 +95,52 @@ public:
 
 		// Add gravity to the velocity_y
 		velocity_y += gravity * dt;
-
+		
 		// Limit the velocity to the maximum speed
-		float velocity_mag = sqrt(velocity_x * velocity_x + velocity_y * velocity_y);
+		velocity_x = std::clamp(velocity_x, -speed, speed);
+		velocity_y = std::clamp(velocity_y, -min_speed_y, jump_height);
+		/*float velocity_mag = sqrt(velocity_x * velocity_x + velocity_y * velocity_y);
 		if (velocity_mag > speed) {
 			velocity_x *= speed / velocity_mag;
-			velocity_y *= speed / velocity_mag;
-		}
-
-
-
+			if (on_ground) {
+				velocity_y *= speed / velocity_mag;
+			}
+			
+		}*/
+		
+		
+		
 		x += velocity_x * dt;
 		y += velocity_y * dt;
+		//y += jump_force;
+		//printf("%f", velocity_x);
+		//printf(" %f\n", velocity_y);
 	}
 
+	
+
+	void move_towards(float target_x, float target_y) {
+		printf("22");
+		// Calculate the vector from current position to target position
+		float dx = target_x - x;
+		float dy = target_y - y;
+		float distance = sqrt(dx * dx + dy * dy);
+
+		// Calculate the movement needed to reach the target position
+		if (distance <= speed) {
+			// If the distance is less than or equal to the speed, we can reach the target position in one step
+			return;
+		}
+		else {
+			// Otherwise, we need to move towards the target position by the specified speed
+			float ratio = (speed ) / distance;
+			
+			x = x + dx * ratio;
+			y = y + dy * ratio;
+			
+			move_towards(target_x, target_y);
+		}
+	}
 
 	void draw() {
 
@@ -155,7 +202,6 @@ public:
 		y += velocity_y * dt;
 	}
 
-
 	bool checkCollision(float box_x, float box_y, float box_w, float box_h) {
 		// Calculate the half-widths and half-heights of the player and the box
 		float half_w = collition_width / 2;
@@ -213,9 +259,7 @@ public:
 		return false;
 	}
 
-
 	void draw() {
-
 		glColor3f(1, 0, 0);
 		glRectf(x - 0.1, y - 0.1, x + 0.1, y + 0.1);
 	}
@@ -294,7 +338,7 @@ public:
 
 
 
-Player player(1.5, 1.5, 0.0007);
+Player player(1.5, 2, 0.0007);
 Box player_collition(player);
 
 Enemy enemy_1(2.85, 1.5, 0.0003, 0);
@@ -303,7 +347,7 @@ Box enemy_1_collition(enemy_1);
 Enemy enemy_2(0.15, 1.5, 0.0003, 0);
 Box enemy_2_collition(enemy_2);
 
-Enemy enemy_3(1.1, 1.5, 0.0003, 1);
+Enemy enemy_3(1.1, 1.5, 0.001, 1);
 Box enemy_3_collition(enemy_3);
 
 Box boxes[8];
@@ -311,6 +355,7 @@ Enemy* enemies[3] = {&enemy_1, &enemy_2, &enemy_3};
 
 
 std::vector<Projectile*> projectiles = {};
+std::vector<Projectile*> player_projectiles = {};
 
 
 
@@ -377,6 +422,7 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 {
 	switch (key) {
 	case 'w':
+		
 		up_key_pressed = true;
 		break;
 	case 's':
@@ -384,9 +430,14 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 		break;
 	case 'a':
 		left_key_pressed = true;
+		player.dir = -1;
 		break;
 	case 'd':
 		right_key_pressed = true;
+		player.dir = 1;
+		break;
+	case 'k':
+		player_shoot_key  = true;
 		break;
 	}
 
@@ -396,6 +447,9 @@ void input_released(unsigned char key, int x, int y) {
 
 	switch (key) {
 	case 'w':
+		/*if (player.velocity_y > 0) {
+			player.velocity_y = 0.5 * player.velocity_y;
+		}*/
 		up_key_pressed = false;
 		break;
 	case 's':
@@ -416,6 +470,10 @@ void mySpecialKeyFunc(int key, int x, int y)
 }
 
 bool checkCollision(float player_x, float player_y, float player_w, float player_h, float box_x, float box_y, float box_w, float box_h) {
+	if (check_coll_called_move_towards) {
+		printf("%i\n", check_coll_called_move_towards);
+	}
+		
 	// Calculate the half-widths and half-heights of the player and the box
 	float player_half_w = player_w / 2;
 	float player_half_h = player_h / 2;
@@ -443,33 +501,99 @@ bool checkCollision(float player_x, float player_y, float player_w, float player
 		// Move the player out of the box
 		if (overlap_x < overlap_y) {
 			if (player_center_x < box_center_x) {
-				player.x -= overlap_x;
-				player.velocity_x = 0;
+				if (!check_coll_called_move_towards) {
+					player.x -= overlap_x;
+					player.velocity_x = 0;
+				}
+				
+				
 			}
 			else {
-				player.x += overlap_x;
-				player.velocity_x = 0;
+				if (!check_coll_called_move_towards) {
+					player.x += overlap_x;
+					player.velocity_x = 0;
+				}
+				//player.x += overlap_x;
+				
 			}
 		}
 		else {
 			if (player_center_y < box_center_y) {
-				player.y -= overlap_y;
-				player.velocity_y = 0;
+				if (!check_coll_called_move_towards) {
+					player.y -= overlap_y;
+					player.velocity_y = 0;
+				}
+				//player.y -= overlap_y;
+				
 			}
 			else {
-				player.y += overlap_y;
-				player.velocity_y = 0;
+				if (!check_coll_called_move_towards) {
+					player.y += overlap_y;
+					player.velocity_y = 0;
+					player.on_ground = true;
+					player.jump_amount = 0;
+				}
+				//player.y += overlap_y;
+				
+				//player.jump_force = 0;
 			}
 		}
 
 		// Collision detected
 		return true;
 	}
+	else {
+		return false;
+	}
 
 	// No collision
-	return false;
+	//player.on_ground = false;
+	
 }
 
+void move_towards(float target_x, float target_y) {
+	printf("22");
+	// Calculate the vector from current position to target position
+	float dx = target_x - player.x;
+	float dy = target_y - player.y;
+	float distance = sqrt(dx * dx + dy * dy);
+
+	// Calculate the movement needed to reach the target position
+	if (distance <= player.speed) {
+		// If the distance is less than or equal to the speed, we can reach the target position in one step
+		check_coll_called_move_towards = false;
+		return;
+		
+	}
+	else {
+		// Otherwise, we need to move towards the target position by the specified speed
+		float ratio = (player.speed) / distance;
+		if (!player.on_ground) {
+			for (int i = 0; i < 8; i++) {
+				check_coll_called_move_towards = false;
+				printf("%i is there collition \n", checkCollision(player.x + dx * ratio, player.y + dy * ratio, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height));
+				if (checkCollision(player.x + dx * ratio, player.y + dy * ratio, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height)) {
+					check_coll_called_move_towards = false;
+
+					return;
+
+				}
+			}
+		}
+		player.x = player.x + dx * ratio;
+		player.y = player.y + dy * ratio;
+		move_towards(target_x, target_y);
+		
+
+		
+	}
+}
+
+void check_boxes(float x, float y) {
+	for (int i = 0; i < 8; i++) {
+		checkCollision(x, y, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height);
+	}
+}
 
 void update(int) {  //something like physics proccess in godot
 
@@ -478,12 +602,54 @@ void update(int) {  //something like physics proccess in godot
 	double current_time = glutGet(GLUT_ELAPSED_TIME);
 	double dt = current_time - prev_time;
 	prev_time = current_time;
+	bool old_ground = player.on_ground;
+	
 
 	float dx = 0, dy = 0;
+	
 	if (left_key_pressed) dx -= 0.01;
 	if (right_key_pressed) dx += 0.01;
-	if (down_key_pressed) dy -= 0.01;
-	if (up_key_pressed) dy += 0.01;
+	//if (down_key_pressed) dy -= 0.01;
+	//if (up_key_pressed) dy += 0.01;
+	
+
+	for (int i = 0; i < 8; i++) {
+		checkCollision(player.x + dx, player.y + dy, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height);
+	}
+
+	if (!player.on_ground) {
+		if (player.jump_steps_after > 0)
+			player.jump_steps_after -= 1;
+	}
+	else if (player.jump_steps_after != player.jump_steps_after_duration)
+		player.jump_steps_after = player.jump_steps_after_duration;
+
+	
+	// Ground jump:
+		if (up_key_pressed) {
+			if (player.on_ground or player.jump_steps_after > 0) {
+				move_towards(player.x + dx, player.y + player.jump_height);
+				dy += 0.01;
+				player.on_ground = false;
+				player.jump_amount = 1;
+				player.jump_steps_after = 0;
+
+
+				// Air jump ("double-jump"):
+			}
+			else {
+				if (player.jump_amount++ <= player.jump_amount_max)
+					//move_towards(player.x + dx, player.y + player.jump_height);
+					printf(" ");
+
+			}
+
+			up_key_pressed = false;
+		}
+		
+	
+	
+	//printf("%i\n", player.on_ground);
 
 	player.move(dt, dx, dy);
 
@@ -500,6 +666,11 @@ void update(int) {  //something like physics proccess in godot
 		}
 	}
 
+	if (player_shoot_key) {
+		Projectile* project_inst_1 = new Projectile(player.x, player.y, 0.01, player.dir);
+		player_projectiles.push_back(project_inst_1);
+		player_shoot_key = false;
+	}
 	
 	for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
 		float dxe = 0, dye = 0;
@@ -513,12 +684,12 @@ void update(int) {  //something like physics proccess in godot
 				if (enemies[i]->y > player.y - 0.02 && enemies[i]->y < player.y + 0.02) {
 
 					if (enemies[i]->x > player.x) {
-						printf("jeste1");
-						Projectile* project_inst = new Projectile(enemies[i]->x, enemies[i]->y, 0.005, -1);
+						//printf("jeste1");
+						Projectile* project_inst = new Projectile(enemies[i]->x, enemies[i]->y, 0.008, -1);
 						projectiles.push_back(project_inst);
 					}
 					else {
-						Projectile* project_inst = new Projectile(enemies[i]->x, enemies[i]->y, 0.005, 1);
+						Projectile* project_inst = new Projectile(enemies[i]->x, enemies[i]->y, 0.008, 1);
 						projectiles.push_back(project_inst);
 					}
 				}
@@ -552,8 +723,6 @@ void update(int) {  //something like physics proccess in godot
 	glutTimerFunc(1000 / FPS, update, 1);
 
 }
-
-
 
 void drawScene(void)
 {
@@ -600,24 +769,79 @@ void drawScene(void)
 	glPopMatrix();
 
 	glPushMatrix();
-
-	if (!projectiles.empty()) {
-		// Iterate over the projectiles in the vector
-		for (auto it = projectiles.begin(); it != projectiles.end();) {
-			int index = std::distance(projectiles.begin(), it);
-			// Do something with the projectile, for example:
-			//printf("jeste");
+	if (!player_projectiles.empty()) {
+		for (auto it = player_projectiles.begin(); it != player_projectiles.end();) {
+			int index = std::distance(player_projectiles.begin(), it);
 			(*it)->move();
 			(*it)->draw();
 			float off = (*it)->speed * (*it)->dir;
-			if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, (*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
+			bool projectile_deleted = false;
+			if ((*it)->x + off > Xmax || (*it)->x + off < Xmin) {
 				delete (*it);
-				it = projectiles.erase(it);
-			}else {
+				it = player_projectiles.erase(it);
+				projectile_deleted = true;
+			}
+			else {
+				for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
+					if (enemies[i]->is_alive) {
+						if (enemies[i]->checkCollision((*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
+							enemies[i]->is_alive = false;
+							delete (*it);
+							it = player_projectiles.erase(it);
+							projectile_deleted = true;
+							break;
+						}
+					}
+				}
+			}
+			if (!projectile_deleted) {
 				++it;
 			}
 		}
 	}
+
+	glPopMatrix();
+
+	glPushMatrix();
+	if (!projectiles.empty()) {
+		for (auto it = projectiles.begin(); it != projectiles.end();) {
+			int index = std::distance(projectiles.begin(), it);
+			(*it)->move();
+			(*it)->draw();
+			float off = (*it)->speed * (*it)->dir;
+			bool projectile_deleted = false;
+			if ((*it)->x + off > Xmax || (*it)->x + off < Xmin) {
+				delete (*it);
+				it = projectiles.erase(it);
+				projectile_deleted = true;
+			}
+			else if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, (*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
+				delete (*it);
+				it = projectiles.erase(it);
+				projectile_deleted = true;
+			}
+			if (!projectile_deleted) {
+				++it;
+			}
+		}
+	}
+	//if (!projectiles.empty()) {
+	//	// Iterate over the projectiles in the vector
+	//	for (auto it = projectiles.begin(); it != projectiles.end();) {
+	//		int index = std::distance(projectiles.begin(), it);
+	//		// Do something with the projectile, for example:
+	//		//printf("jeste");
+	//		(*it)->move();
+	//		(*it)->draw();
+	//		float off = (*it)->speed * (*it)->dir;
+	//		if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, (*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
+	//			delete (*it);
+	//			it = projectiles.erase(it);
+	//		}else {
+	//			++it;
+	//		}
+	//	}
+	//}
 	
 	glPopMatrix();
 
@@ -678,7 +902,6 @@ const char* filenameArray[4] = {
 
 int main(int argc, char** argv)
 {
-
 
 	boxes[0] = Box(0, 0, 3, 0.1);
 	boxes[1] = Box(0.3, 1.4, 0.2, 0.2);
