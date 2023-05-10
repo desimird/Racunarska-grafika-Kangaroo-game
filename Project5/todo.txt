@@ -6,3 +6,6 @@ think of what to do with textures
 ui
 
 add hp player
+
+
+dont kill side enemies with projectile
