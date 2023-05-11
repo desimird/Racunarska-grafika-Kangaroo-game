@@ -17,7 +17,7 @@
 
 constexpr auto FPS = 80.0;
 
-static GLuint textureName[12];
+static GLuint textureName[19];
 
 int frame_count = 0;
 float fps = 0.0;
@@ -53,7 +53,10 @@ bool check_coll_called_move_towards = false;
 int anim_count = 0;
 int player_anim_count = 0;
 
-int points = 55;
+int points = 0;
+int lifes = 5;
+
+int sceen_num = 0;
 
 
 
@@ -70,7 +73,7 @@ public:
 	int jump_steps_after = 0;
 	int jump_steps_after_duration = 16;
 	float jump_height = 0.017;
-	int jump_amount_max = 2;
+	int jump_amount_max = 1;
 	float jump_force = 0.02;
 	int dir = 1; // 1 right -1 left
 	float size = 0.1;
@@ -420,6 +423,45 @@ public:
 	}
 };
 
+class Fruit
+{
+public:
+	float x, y;
+	float width, height;
+	float rc = 1, gc = 0, bc = 1;
+
+	Fruit() {
+		x = 0;
+		y = 0;
+		width = 0.3;
+		height = 0.3;
+	}
+
+	Fruit(float start_x, float start_y, float box_width, float box_height) {
+		x = start_x;
+		y = start_y;
+		width = box_width;
+		height = box_height;
+
+	}
+
+	void draw(void) {
+		glBindTexture(GL_TEXTURE_2D, textureName[12]);
+
+		glBegin(GL_POLYGON);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(x, y, 0.0f); // Bottom left corner
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(x + width, y, 0.0f);  // Bottom right corner
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(x + width, y + height, 0.0f);   // Top right corner
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(x, y + height, 0.0f);  // Top left corner
+		glEnd();
+		//glColor3f(rc, gc, bc);
+		//glRectf(x, y, x + width, y + height);
+	}
+
+};
+
+
 
 
 Player player(1.5, 2, 0.0007);
@@ -434,12 +476,16 @@ Box enemy_2_collition(enemy_2);
 Enemy enemy_3(1.1, 1.5, 0.001, 1);
 Box enemy_3_collition(enemy_3);
 
-Box boxes[8];
+Box boxes[9];
 Enemy* enemies[3] = {&enemy_1, &enemy_2, &enemy_3};
 
 
 std::vector<Projectile*> projectiles = {};
 std::vector<Projectile*> player_projectiles = {};
+
+std::vector<Fruit*> fruits = {};
+
+
 
 
 
@@ -470,8 +516,8 @@ void loadTextureFromFile(const char* filename)
 void initFour(const char* filenames[])
 {	
 	//int size = sizeof(filenames) / sizeof(filenames[0]);
-	glGenTextures(12, textureName);	// Load four texture names into array
-	for (int i = 0; i < 12; i++) {
+	glGenTextures(19, textureName);	// Load four texture names into array
+	for (int i = 0; i < 19; i++) {
 		glBindTexture(GL_TEXTURE_2D, textureName[i]);	// Texture #i is active now
 		loadTextureFromFile(filenames[i]);			// Load texture #i
 	}
@@ -539,7 +585,14 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 		player.dir = 1;
 		break;
 	case 'k':
-		player_shoot_key  = true;
+		if (sceen_num == 0 or sceen_num == 2 or sceen_num == 3) {
+			lifes = 5;
+			points = 0;
+			sceen_num = 1;
+		}else{
+			player_shoot_key = true;
+		}
+		
 		break;
 	}
 
@@ -667,11 +720,11 @@ void move_towards(float target_x, float target_y) {
 }
 
 void draw_character_lives() {
-	float heartPosition = 1.25;
+	float heartPosition = 1.7;
 	float heartWidth = 0.15;
 	glPushMatrix();
-	glBindTexture(GL_TEXTURE_2D, textureName[10]);
-	for (int heart = 0; heart < 5; heart++) {
+	glBindTexture(GL_TEXTURE_2D, textureName[11]);
+	for (int heart = 0; heart < lifes; heart++) {
 		glBegin(GL_POLYGON);
 		glTexCoord2f(0.0, 0.0);
 		glVertex2f(heartPosition + (heart * heartWidth), 2.85);
@@ -688,74 +741,70 @@ void draw_character_lives() {
 
 void draw_score_points() {
 	int newPoints = points;
-	int reminder;
-	int step = 5;
-	float scorePosition = 0.50;
+	float scorePosition = 0.5;
 	float scoreWidth = 0.10;
-	while (newPoints > 0) {
-		reminder = newPoints % 10;
-		newPoints = newPoints / 10;
-		glPushMatrix();
-		switch (reminder) {
-			// u case-ove samo stavim da se ucitava slika odredjenog broja
-		case 0:
-			glBindTexture(GL_TEXTURE_2D, textureName[13]);
-			break;
-		case 1:
-			glBindTexture(GL_TEXTURE_2D, textureName[14]);
-			break;
-		case 2:
-			glBindTexture(GL_TEXTURE_2D, textureName[15]);
-			break;
-		case 3:
-			glBindTexture(GL_TEXTURE_2D, textureName[16]);
-			break;
-		case 4:
-			glBindTexture(GL_TEXTURE_2D, textureName[17]);
-			break;
-		case 5:
-			glBindTexture(GL_TEXTURE_2D, textureName[18]);
-			break;
-		case 6:
-			glBindTexture(GL_TEXTURE_2D, textureName[19]);
-			break;
-		case 7:
-			glBindTexture(GL_TEXTURE_2D, textureName[20]);
-			break;
-		case 8:
-			glBindTexture(GL_TEXTURE_2D, textureName[21]);
-			break;
-		case 9:
-			glBindTexture(GL_TEXTURE_2D, textureName[22]);
-			break;
+	float digitSpacing = scoreWidth * 0.12; // increase spacing between digits slightly
+	int numDigits = 5; // always draw 5 digits
+
+	// iterate over the digits from left to right
+	for (int i = numDigits - 1; i >= 0; i--) {
+		int digit = newPoints % 10;
+		newPoints /= 10;
+
+		// if we have run out of digits but still have space to fill, draw a zero
+		if (newPoints == 0 && digit == 0 && i != 0) {
+			digit = 0;
 		}
-		//dodavanje brojeva
+
+		// draw the digit as a textured rectangle
+		glPushMatrix();
+		glBindTexture(GL_TEXTURE_2D, textureName[10]);
 		glBegin(GL_POLYGON);
-		glTexCoord2f(0.0, 0.0);
-		glVertex2f(scorePosition + (step * scoreWidth), 2.6);
-		glTexCoord2f(1, 0.0);
-		glVertex2f(scorePosition + ((step + 1) * scoreWidth), 2.6);
-		glTexCoord2f(1, 1);
-		glVertex2f(scorePosition + ((step + 1) * scoreWidth), 2.7);
-		glTexCoord2f(0.0, 1);
-		glVertex2f(scorePosition + (step * scoreWidth), 2.7);
+		glTexCoord2f(digit * 0.1, 0.0);
+		glVertex2f(scorePosition + (i * scoreWidth + digitSpacing), 2.88);
+		glTexCoord2f((digit + 1) * 0.1, 0.0);
+		glVertex2f(scorePosition + ((i + 1) * scoreWidth + digitSpacing), 2.88);
+		glTexCoord2f((digit + 1) * 0.1, 1);
+		glVertex2f(scorePosition + ((i + 1) * scoreWidth + digitSpacing), 2.98);
+		glTexCoord2f(digit * 0.1, 1);
+		glVertex2f(scorePosition + (i * scoreWidth + digitSpacing), 2.98);
 		glEnd();
 		glPopMatrix();
-		step = step - 1;
 	}
-	glPushMatrix();
-	glBindTexture(GL_TEXTURE_2D, textureName[12]);
-	glBegin(GL_POLYGON);
-	glTexCoord2f(0.0, 0.0);
-	glVertex2f(0.40, 2.75);
-	glTexCoord2f(1, 0.0);
-	glVertex2f(1.20, 2.75);
-	glTexCoord2f(1, 1);
-	glVertex2f(1.20, 3.0);
-	glTexCoord2f(0.0, 1);
-	glVertex2f(0.40, 3.0);
-	glEnd();
-	glPopMatrix();
+}
+
+void draw_score_points_menu() {
+	int newPoints = points;
+	float scorePosition = 1.8;
+	float scoreWidth = 0.2;
+	float digitSpacing = scoreWidth * 0.12; // increase spacing between digits slightly
+	int numDigits = 5; // always draw 5 digits
+
+	// iterate over the digits from left to right
+	for (int i = numDigits - 1; i >= 0; i--) {
+		int digit = newPoints % 10;
+		newPoints /= 10;
+
+		// if we have run out of digits but still have space to fill, draw a zero
+		if (newPoints == 0 && digit == 0 && i != 0) {
+			digit = 0;
+		}
+
+		// draw the digit as a textured rectangle
+		glPushMatrix();
+		glBindTexture(GL_TEXTURE_2D, textureName[17]);
+		glBegin(GL_POLYGON);
+		glTexCoord2f(digit * 0.1, 0.0);
+		glVertex2f(scorePosition + (i * scoreWidth + digitSpacing), 1.2);
+		glTexCoord2f((digit + 1) * 0.1, 0.0);
+		glVertex2f(scorePosition + ((i + 1) * scoreWidth + digitSpacing), 1.2);
+		glTexCoord2f((digit + 1) * 0.1, 1);
+		glVertex2f(scorePosition + ((i + 1) * scoreWidth + digitSpacing), 1.45);
+		glTexCoord2f(digit * 0.1, 1);
+		glVertex2f(scorePosition + (i * scoreWidth + digitSpacing), 1.45);
+		glEnd();
+		glPopMatrix();
+	}
 }
 
 void update(int) {  //something like physics proccess in godot
@@ -774,7 +823,7 @@ void update(int) {  //something like physics proccess in godot
 	//if (down_key_pressed) dy -= 0.01;
 	//if (up_key_pressed) dy += 0.01;
 	
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 9; i++) {
 		checkCollision(player.x + dx, player.y + dy, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height);
 	}
 
@@ -809,7 +858,7 @@ void update(int) {  //something like physics proccess in godot
 
 	player.move(dt, dx, dy);
 
-	for (int j = 0; j < 8; j++) {
+	for (int j = 0; j < sizeof(boxes) / sizeof(boxes[0]); j++) {
 		if (checkCollision(player.x + dx, player.y + dy, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height)) {
 			boxes[j].rc = 1;
 			boxes[j].gc = 1;
@@ -864,11 +913,23 @@ void update(int) {  //something like physics proccess in godot
 				for (j = 0; j < sizeof(boxes) / sizeof(boxes[0]); j++) {
 					enemies[i]->checkCollision(boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height);
 					if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, enemies[i]->x - (enemies[i]->collition_width / 2), enemies[i]->y - (enemies[i]->collition_height / 2), enemies[i]->collition_width, enemies[i]->collition_height)) {
+						if (enemies[i]->is_alive) {
+							lifes--;
+						}
 						enemies[i]->is_alive = false; //logic for "combat"
+						
 					}
 				}
 			}
 		}
+	}
+
+	if (lifes <= 0) {
+		if (sceen_num != 2) {
+			sceen_num = 2;
+		}
+		
+		printf("game over");
 	}
 
 
@@ -886,131 +947,223 @@ void drawScene(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glEnable(GL_TEXTURE_2D);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	switch (sceen_num)
+	{
+	case 0:
+		glEnable(GL_TEXTURE_2D);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+		glBindTexture(GL_TEXTURE_2D, textureName[16]);
+
+		glBegin(GL_POLYGON);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(0, 0, 0.0f); // Bottom left corner
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(3, 0, 0.0f);  // Bottom right corner
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(3, 3, 0.0f);   // Top right corner
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(0, 3, 0.0f);  // Top left corner
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+		break;
+	case 2:
+		glEnable(GL_TEXTURE_2D);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+		draw_score_points_menu();
+		glBindTexture(GL_TEXTURE_2D, textureName[15]);
 
 
-	glPushMatrix();
-	draw_character_lives();
-	glPopMatrix();
-	glPushMatrix();
+		glBegin(GL_POLYGON);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(0, 0, 0.0f); // Bottom left corner
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(3, 0, 0.0f);  // Bottom right corner
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(3, 3, 0.0f);   // Top right corner
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(0, 3, 0.0f);  // Top left corner
+		glEnd();
 
-	player.draw();
+		
 
-	glPopMatrix();
+		glDisable(GL_TEXTURE_2D);
+		break;
+	case 3:
+		glEnable(GL_TEXTURE_2D);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+		draw_score_points_menu();
+		glBindTexture(GL_TEXTURE_2D, textureName[14]);
 
-	glPushMatrix();
 
-	for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
-		if (enemies[i]->is_alive) {
-			enemies[i]->draw();
-		}
-	}
+		glBegin(GL_POLYGON);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(0, 0, 0.0f); // Bottom left corner
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(3, 0, 0.0f);  // Bottom right corner
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(3, 3, 0.0f);   // Top right corner
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(0, 3, 0.0f);  // Top left corner
+		glEnd();
 
-	glPopMatrix();
 
-	glPushMatrix();
-	
-	draw_score_points();
 
-	glPopMatrix();
+		glDisable(GL_TEXTURE_2D);
+		break;
+	case 1:
+		glEnable(GL_TEXTURE_2D);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-	//glPushMatrix();
-	//player_collition.x = player.x - (player.collition_width / 2);
-	//player_collition.y = player.y - (player.collition_height / 2);
-	//player_collition.draw();
 
-	
-	//glPopMatrix();
-	
-	
 
-	
-
-	/*glBegin(GL_POINTS);
-	glColor3f(0, 0, 0);
-	glVertex2f(player.x, player.y);
-	glEnd();*/
-
-	
-
-	
-	if (!player_projectiles.empty()) {
 		glPushMatrix();
-		for (auto it = player_projectiles.begin(); it != player_projectiles.end();) {
-			int index = std::distance(player_projectiles.begin(), it);
-			(*it)->move();
-			(*it)->draw();
-			float off = (*it)->speed * (*it)->dir;
-			bool projectile_deleted = false;
-			if ((*it)->x + off > Xmax-0.3 || (*it)->x + off < Xmin+0.3) {
-				delete (*it);
-				it = player_projectiles.erase(it);
-				projectile_deleted = true;
+
+		player.draw();
+
+		glPopMatrix();
+
+		glPushMatrix();
+
+		for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
+			if (enemies[i]->is_alive) {
+				enemies[i]->draw();
 			}
-			else {
-				for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
-					if (enemies[i]->is_alive) {
-						if (enemies[i]->checkCollision((*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
-							enemies[i]->is_alive = false;
-							delete (*it);
-							it = player_projectiles.erase(it);
-							projectile_deleted = true;
-							break;
+		}
+
+		glPopMatrix();
+
+		glPushMatrix();
+
+		draw_score_points();
+		draw_character_lives();
+
+		glPopMatrix();
+
+
+		if (!player_projectiles.empty()) {
+			glPushMatrix();
+			for (auto it = player_projectiles.begin(); it != player_projectiles.end();) {
+				int index = std::distance(player_projectiles.begin(), it);
+				(*it)->move();
+				(*it)->draw();
+				float off = (*it)->speed * (*it)->dir;
+				bool projectile_deleted = false;
+				if ((*it)->x + off > Xmax - 0.3 || (*it)->x + off < Xmin + 0.3) {
+					delete (*it);
+					it = player_projectiles.erase(it);
+					projectile_deleted = true;
+				}
+				else {
+					for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
+						if (enemies[i]->is_alive) {
+							if (enemies[i]->checkCollision((*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
+								enemies[i]->is_alive = false;
+								points += 100;
+								delete (*it);
+								it = player_projectiles.erase(it);
+								projectile_deleted = true;
+								break;
+							}
 						}
 					}
 				}
+				if (!projectile_deleted) {
+					++it;
+				}
 			}
-			if (!projectile_deleted) {
-				++it;
-			}
+			glPopMatrix();
 		}
-		glPopMatrix();
-	}
 
-	
+		if (!projectiles.empty()) {
+			glPushMatrix();
+			for (auto it = projectiles.begin(); it != projectiles.end();) {
+				int index = std::distance(projectiles.begin(), it);
+				(*it)->move();
+				(*it)->draw();
+				float off = (*it)->speed * (*it)->dir;
+				bool projectile_deleted = false;
+				if ((*it)->x + off > Xmax || (*it)->x + off < Xmin) {
+					delete (*it);
+					it = projectiles.erase(it);
+					projectile_deleted = true;
+				}
+				else if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, (*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
+					delete (*it);
+					it = projectiles.erase(it);
+					projectile_deleted = true;
+					lifes--;
+				}
+				if (!projectile_deleted) {
+					++it;
+				}
+			}
+			glPopMatrix();
+		}
 
-	
+		if (!fruits.empty()) {
+			glPushMatrix();
+			for (auto it = fruits.begin(); it != fruits.end();) {
+				int index = std::distance(fruits.begin(), it);
+				(*it)->draw();
+				bool projectile_deleted = false;
+				if ((*it)->x > Xmax || (*it)->x < Xmin) {
+					delete (*it);
+					it = fruits.erase(it);
+					projectile_deleted = true;
+				}
+				else if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, (*it)->x, (*it)->y, (*it)->width, (*it)->height)) {
+					delete (*it);
+					it = fruits.erase(it);
+					projectile_deleted = true;
+					points += 10;
+				}
+				if (!projectile_deleted) {
+					++it;
+				}
+			}
+			glPopMatrix();
+		}
 
-	if (!projectiles.empty()) {
+		for (int i = 0; i < 9; i++) {  //level
+			boxes[i].draw();
+		}
+		glDisable(GL_TEXTURE_2D);
+
 		glPushMatrix();
-		for (auto it = projectiles.begin(); it != projectiles.end();) {
-			int index = std::distance(projectiles.begin(), it);
-			(*it)->move();
-			(*it)->draw();
-			float off = (*it)->speed * (*it)->dir;
-			bool projectile_deleted = false;
-			if ((*it)->x + off > Xmax || (*it)->x + off < Xmin) {
-				delete (*it);
-				it = projectiles.erase(it);
-				projectile_deleted = true;
-			}
-			else if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, (*it)->x + off, (*it)->y, (*it)->collition_width, (*it)->collition_height)) {
-				delete (*it);
-				it = projectiles.erase(it);
-				projectile_deleted = true;
-			}
-			if (!projectile_deleted) {
-				++it;
-			}
-		}
+		//ui
+		glColor3f(0, 0, 0);
+		glBegin(GL_POLYGON);
+		glVertex3f(0.0, 2.8, -1);
+		glVertex3f(0.0, 3.0, -1);
+		glVertex3f(3.0, 3.0, -1);
+		glVertex3f(3.0, 2.8, -1);
+		glEnd();
+		glColor3f(1, 1, 1);
+		glBegin(GL_POLYGON);
+		glVertex3f(0.0, 2.78, -0.9);
+		glVertex3f(0.0, 2.8, -0.9);
+		glVertex3f(3.0, 2.8, -0.9);
+		glVertex3f(3.0, 2.78, -0.9);
+		glEnd();
+		glBegin(GL_POLYGON);
+		glVertex3f(0.3, 2.78, -0.9);
+		glVertex3f(0.3, 3.0, -0.9);
+		glVertex3f(0.32, 3.0, -0.9);
+		glVertex3f(0.32, 2.78, -0.9);
+		glEnd();
+		glBegin(GL_POLYGON);
+		glVertex3f(2.68, 2.78, -0.9);
+		glVertex3f(2.68, 3.0, -0.9);
+		glVertex3f(2.7, 3.0, -0.9);
+		glVertex3f(2.7, 2.78, -0.9);
+		glEnd();
+
 		glPopMatrix();
 	}
+
 	
-	for (int i = 0; i < 8; i++) {  //level
-		boxes[i].draw();
-	}
-	glDisable(GL_TEXTURE_2D);
-	
+
+
 	// Flush the pipeline, swap the buffers
-	glFlush();
-	//glDisable(GL_TEXTURE_2D);
-	
+	glFlush();	
 	glutSwapBuffers();
 
 	updateFPS();
 
 }
+
+
 
 void initRendering()
 {
@@ -1050,7 +1203,7 @@ void resizeWindow(int w, int h)
 
 }
 
-const char* filenameArray[12] = {
+const char* filenameArray[19] = {
 		"kangaroIdleExport.bmp",
 		"kangaroIdleExport_R.bmp",
 		"kangaroRunt_L.bmp",
@@ -1061,21 +1214,36 @@ const char* filenameArray[12] = {
 		"wakling_enemy_run.bmp",
 		"bannana.bmp",
 		"tree.bmp",
-		"IvyTexture.bmp",
-		"RedLeavesTexture.bmp"
+		"digits.bmp",
+		"hearth.bmp",
+		"ananas.bmp",
+		"start_screen.bmp",
+		"you_win_score.bmp",
+		"game_over_screen.bmp",
+		"start_screen.bmp",
+		"menu_digits.bmp",
+		"IvyTexture.bmp"
 };
 
 int main(int argc, char** argv)
 {
-
+	//this is starting layout
 	boxes[0] = Box(0, 0, 3, 0.1);
-	boxes[1] = Box(0.3, 1.4, 0.2, 0.2);
-	boxes[2] = Box(0.7, 2.5, 0.5, 0.3);
-	boxes[3] = Box(0, 2.9, 3, 0.1);  // screen edges
-	boxes[4] = Box(0, 0, 0.3, 3);	// screen edges
-	boxes[5] = Box(0, 0, 3, 0.1);   // screen edges
-	boxes[6] = Box(2.7, 0, 0.3, 3); // screen edges
-	boxes[7] = Box(0, 1, 3, 0.1);
+	boxes[1] = Box(0, 0, 0, 0);  // screen edges
+	boxes[2] = Box(0, 0, 0.3, 3);	// screen edges
+	boxes[3] = Box(0, 0, 3, 0.1);   // screen edges
+	boxes[4] = Box(2.7, 0, 0.3, 3); // screen edges
+	//here i will add boxes for levels
+	boxes[5] = Box(0, 0.7, 2, 0.1);
+	boxes[6] = Box(2.3, 0.7, 0.5, 0.1);
+	boxes[7] = Box(0.3, 1.4, 0.2, 0.2);
+	boxes[8] = Box(0.7, 2.5, 0.5, 0.3);
+	
+
+
+	//fruits for 
+	Fruit* fruit_inst_1 = new Fruit(1.5, 1.5, 0.15, 0.15);
+	fruits.push_back(fruit_inst_1);
 
 	//Projectile*  project_inst = new Projectile(1.7, 1.7, 0.001, -1);
 	//projectiles.push_back(project_inst);
