@@ -13,6 +13,7 @@
 #include <iterator>
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 
 
 constexpr auto FPS = 80.0;
@@ -461,7 +462,42 @@ public:
 
 };
 
+class End_level
+{	
+public:
+	float x, y;
+	float width, height;
+	int alive = 1;
 
+	End_level() {
+		x = 0;
+		y = 0;
+		width = 0.3;
+		height = 0.3;
+	}
+
+	End_level(float start_x, float start_y, float box_width, float box_height) {
+		x = start_x;
+		y = start_y;
+		width = box_width;
+		height = box_height;
+	};
+
+	void draw(void) {
+		glBindTexture(GL_TEXTURE_2D, textureName[0]);
+
+		glBegin(GL_POLYGON);
+		glColor3f(1, 1, 1);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(x, y, 0.0f); // Bottom left corner
+		glTexCoord2f(1.0f, 0.0f); glVertex3f(x + width, y, 0.0f);  // Bottom right corner
+		glTexCoord2f(1.0f, 1.0f); glVertex3f(x + width, y + height, 0.0f);   // Top right corner
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(x, y + height, 0.0f);  // Top left corner
+		glEnd();
+		//glColor3f(rc, gc, bc);
+		//glRectf(x, y, x + width, y + height);
+	};
+
+};
 
 
 Player player(1.5, 2, 0.0007);
@@ -476,8 +512,15 @@ Box enemy_2_collition(enemy_2);
 Enemy enemy_3(1.1, 1.5, 0.001, 1);
 Box enemy_3_collition(enemy_3);
 
-Box boxes[9];
+Box boxes[11];
+Box boxes1[11];
+Box boxes2[11];
+Box boxes3[11];
 Enemy* enemies[3] = {&enemy_1, &enemy_2, &enemy_3};
+
+End_level end_level(0.5, 2.2, 0.1, 0.1);
+float end_level_pos[3][2] = { {0.5,2.2},{2.5,2.2},{0.5,2.4} };
+
 
 
 std::vector<Projectile*> projectiles = {};
@@ -567,6 +610,16 @@ void anim_fps() {
 	}
 }
 
+void switch_boxes(Box* array2) {
+	for (int i = 0; i < 11; ++i) {
+		boxes[i].x = array2[i].x;
+		boxes[i].y = array2[i].y;
+		boxes[i].width = array2[i].width;
+		boxes[i].height = array2[i].height;
+	}
+
+}
+
 void myKeyboardFunc(unsigned char key, int x, int y)
 {
 	switch (key) {
@@ -589,6 +642,7 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 			lifes = 5;
 			points = 0;
 			sceen_num = 1;
+			switch_boxes(boxes3);
 		}else{
 			player_shoot_key = true;
 		}
@@ -823,7 +877,7 @@ void update(int) {  //something like physics proccess in godot
 	//if (down_key_pressed) dy -= 0.01;
 	//if (up_key_pressed) dy += 0.01;
 	
-	for (int i = 0; i < 9; i++) {
+	for (int i = 0; i < 11; i++) {
 		checkCollision(player.x + dx, player.y + dy, player.collition_width, player.collition_height, boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height);
 	}
 
@@ -923,6 +977,7 @@ void update(int) {  //something like physics proccess in godot
 			}
 		}
 	}
+	
 
 	if (lifes <= 0) {
 		if (sceen_num != 2) {
@@ -1002,6 +1057,9 @@ void drawScene(void)
 		glDisable(GL_TEXTURE_2D);
 		break;
 	case 1:
+	case 4:
+	case 5:
+		printf("%i\n", sceen_num);
 		glEnable(GL_TEXTURE_2D);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
@@ -1029,6 +1087,7 @@ void drawScene(void)
 		draw_character_lives();
 
 		glPopMatrix();
+
 
 
 		if (!player_projectiles.empty()) {
@@ -1114,9 +1173,53 @@ void drawScene(void)
 			}
 			glPopMatrix();
 		}
+		switch (sceen_num)
+		{
+		case 1:
+			end_level.x = end_level_pos[0][0];
+			end_level.y = end_level_pos[0][1];
+			break;
+		case 4:
+			end_level.x = end_level_pos[1][0];
+			end_level.y = end_level_pos[1][1];
+			break;
+		case 5:
+			end_level.x = end_level_pos[2][0];
+			end_level.y = end_level_pos[2][1];
+			break;
+		}
+		end_level.draw();
+		if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, end_level.x - (end_level.width / 2), end_level.y - (end_level.height / 2), end_level.width, end_level.height)) {
+			//printf("usp");
+			if (sceen_num == 5) {
+				switch_boxes(boxes3);
+				sceen_num = 3;
+				player.x = 0.35;
+				player.y = 0.35;
+			}
+			if (sceen_num == 4) {
+				switch_boxes(boxes2);
+				sceen_num = 5;
+				player.x = 0.35;
+				player.y = 0.35;
+			}
+			if (sceen_num == 1) {
+				switch_boxes(boxes1);
+				sceen_num = 4;
+				player.x = 0.35;
+				player.y = 0.35;
+			}
+		}
 
-		for (int i = 0; i < 9; i++) {  //level
+		for (int i = 0; i < 11; i++) {  //level
 			boxes[i].draw();
+			/*if (sceen_num == 1) {
+				boxes[i].draw();
+			}
+			if (sceen_num == 4) {
+				boxes1[i].draw();
+			}*/
+			
 		}
 		glDisable(GL_TEXTURE_2D);
 
@@ -1236,14 +1339,74 @@ int main(int argc, char** argv)
 	//here i will add boxes for levels
 	boxes[5] = Box(0, 0.7, 2, 0.1);
 	boxes[6] = Box(2.3, 0.7, 0.5, 0.1);
-	boxes[7] = Box(0.3, 1.4, 0.2, 0.2);
-	boxes[8] = Box(0.7, 2.5, 0.5, 0.3);
+	boxes[7] = Box(0, 1.4, 0.5, 0.1);
+	boxes[8] = Box(0.8, 1.4 , 2, 0.1);
+	boxes[9] = Box(0, 2.1, 2, 0.1);
+	boxes[10] = Box(2.3, 2.1, 2, 0.1);
+
+	//this is starting layout
+	boxes1[0] = Box(0, 0, 3, 0.1);
+	boxes1[1] = Box(0, 0, 0, 0);  // screen edges
+	boxes1[2] = Box(0, 0, 0.3, 3);	// screen edges
+	boxes1[3] = Box(0, 0, 3, 0.1);   // screen edges
+	boxes1[4] = Box(2.7, 0, 0.3, 3); // screen edges
+	//here i will add boxes for levels
+	boxes1[5] = Box(0, 0.7, 2, 0.1);
+	boxes1[6] = Box(2.3, 0.7, 0.5, 0.1);
+	boxes1[7] = Box(0, 1.4, 1.30, 0.1);
+	boxes1[8] = Box(1.6, 1.4, 1.4, 0.1);
+	boxes1[9] = Box(0, 2.1, 0.5, 0.1);
+	boxes1[10] = Box(0.8, 2.1, 2.2, 0.1);
+
+	//this is starting layout
+	boxes2[0] = Box(0, 0, 3, 0.1);
+	boxes2[1] = Box(0, 0, 0, 0);  // screen edges
+	boxes2[2] = Box(0, 0, 0.3, 3);	// screen edges
+	boxes2[3] = Box(0, 0, 3, 0.1);   // screen edges
+	boxes2[4] = Box(2.7, 0, 0.3, 3); // screen edges
+	//here i will add boxes for levels
+	boxes2[5] = Box(0, 0.7, 2, 0.1);
+	boxes2[6] = Box(2.3, 0.7, 0.5, 0.1);
+	boxes2[7] = Box(2.3, 1.4, 0.3, 0.1);
+	boxes2[8] = Box(1.4, 1.8, 0.5, 0.1);
+	boxes2[9] = Box(0, 2.3, 1.0, 0.1);
+	boxes2[10] = Box(0.5, 1.4, 0.3, 0.1);
+
+	//this is starting layout
+	boxes3[0] = Box(0, 0, 3, 0.1);
+	boxes3[1] = Box(0, 0, 0, 0);  // screen edges
+	boxes3[2] = Box(0, 0, 0.3, 3);	// screen edges
+	boxes3[3] = Box(0, 0, 3, 0.1);   // screen edges
+	boxes3[4] = Box(2.7, 0, 0.3, 3); // screen edges
+	//here i will add boxes for levels
+	boxes3[5] = Box(0, 0.7, 2, 0.1);
+	boxes3[6] = Box(2.3, 0.7, 0.5, 0.1);
+	boxes3[7] = Box(0, 1.4, 0.5, 0.1);
+	boxes3[8] = Box(0.8, 1.4, 2, 0.1);
+	boxes3[9] = Box(0, 2.1, 2, 0.1);
+	boxes3[10] = Box(2.3, 2.1, 2, 0.1);
+
+	//switch_boxes(boxes2);
+	//for (int i = 0; i < 11; ++i) {
+	//	std::cout << boxes[i].x << " ";
+	//}
+	//std::cout << std::endl;
+
+	//switch_boxes(boxes2);
+
+	//for (int i = 0; i < 11; ++i) {
+	//	std::cout << boxes[i].x  << " ";
+	//}
+	//std::cout << std::endl;
+
 	
 
 
 	//fruits for 
 	Fruit* fruit_inst_1 = new Fruit(1.5, 1.5, 0.15, 0.15);
 	fruits.push_back(fruit_inst_1);
+
+
 
 	//Projectile*  project_inst = new Projectile(1.7, 1.7, 0.001, -1);
 	//projectiles.push_back(project_inst);
