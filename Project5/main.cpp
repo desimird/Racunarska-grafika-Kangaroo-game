@@ -1,6 +1,13 @@
 /*
 * Napisati kratko uputstvo za koriscenje igrice
 *
+* Cilj igre je da Igrac stigne do malog kengura i spasi ga od majmuna koji su ga oteli.
+* Kontrole:
+* A D kretanje levo desno
+* W skok
+* K ispaljivanje projektila i interakcija u pocetnom i krajnjem ekranu 
+* 
+* 
 */
 
 #include <math.h>		
@@ -500,7 +507,7 @@ public:
 };
 
 
-Player player(1.5, 2, 0.0007);
+Player player(0.35, 0.35, 0.0007);
 Box player_collition(player);
 
 Enemy enemy_1(2.85, 1.5, 0.0003, 0);
@@ -509,14 +516,18 @@ Box enemy_1_collition(enemy_1);
 Enemy enemy_2(0.15, 1.5, 0.0003, 0);
 Box enemy_2_collition(enemy_2);
 
-Enemy enemy_3(1.1, 1.5, 0.001, 1);
+Enemy enemy_3(2.5, 1.5, 0.001, 1);
 Box enemy_3_collition(enemy_3);
+
+Enemy enemy_4(2.5, 1.5, 0.001, 1);
+Enemy enemy_5(2.5, 1.5, 0.001, 1);
 
 Box boxes[11];
 Box boxes1[11];
 Box boxes2[11];
 Box boxes3[11];
-Enemy* enemies[3] = {&enemy_1, &enemy_2, &enemy_3};
+Box boxes_walking_enemy[5];
+Enemy* enemies[5] = {&enemy_1, &enemy_2, &enemy_3, &enemy_4, &enemy_5};
 
 End_level end_level(0.5, 2.2, 0.1, 0.1);
 float end_level_pos[3][2] = { {0.5,2.2},{2.5,2.2},{0.5,2.4} };
@@ -576,6 +587,49 @@ void drawTextureQuad(int i) {
 	glTexCoord2f(1.0, 0.0); glVertex3f(1.0, -1.0, 0.0);
 	glEnd();
 
+}
+
+void clear_projectiles() {
+	if (!projectiles.empty()) {
+		for (auto it = projectiles.begin(); it != projectiles.end();) {
+			int index = std::distance(projectiles.begin(), it);
+			delete (*it);
+			it = projectiles.erase(it);
+		}
+	}
+}
+
+void populate_fruits() {
+	if (!fruits.empty()) {
+		for (auto it = fruits.begin(); it != fruits.end();) {
+			int index = std::distance(fruits.begin(), it);
+			delete (*it);
+			it = fruits.erase(it);
+		}
+	}
+	if (sceen_num == 1) {
+		Fruit* fruit_inst_1 = new Fruit(1.5, 0.1, 0.15, 0.15);
+		fruits.push_back(fruit_inst_1);
+		Fruit* fruit_inst_2 = new Fruit(0.35, 1.5, 0.15, 0.15);
+		fruits.push_back(fruit_inst_2);
+		Fruit* fruit_inst_3 = new Fruit(2.5, 2.2, 0.15, 0.15);
+		fruits.push_back(fruit_inst_3);
+	}
+	if (sceen_num == 4) {
+		Fruit* fruit_inst_1 = new Fruit(1.5, 0.1, 0.15, 0.15);
+		fruits.push_back(fruit_inst_1);
+		Fruit* fruit_inst_2 = new Fruit(0.35, 1.5, 0.15, 0.15);
+		fruits.push_back(fruit_inst_2);
+		Fruit* fruit_inst_3 = new Fruit(1.5, 2.2, 0.15, 0.15);
+		fruits.push_back(fruit_inst_3);
+	}
+	if (sceen_num == 5) {
+		Fruit* fruit_inst_1 = new Fruit(1.5, 0.1, 0.15, 0.15);
+		fruits.push_back(fruit_inst_1);
+		Fruit* fruit_inst_2 = new Fruit(1, 0.1, 0.15, 0.15);
+		fruits.push_back(fruit_inst_2);
+	}
+	
 }
 
 void updateFPS() {
@@ -639,9 +693,20 @@ void myKeyboardFunc(unsigned char key, int x, int y)
 		break;
 	case 'k':
 		if (sceen_num == 0 or sceen_num == 2 or sceen_num == 3) {
+			clear_projectiles();
 			lifes = 5;
 			points = 0;
 			sceen_num = 1;
+			populate_fruits();
+			player.x = 0.35;
+			player.y = 0.35;
+			enemy_3.is_alive = 1;
+			enemy_4.x = 0.35;
+			enemy_4.y = 1.5;
+			enemy_4.is_alive = 1;
+			enemy_5.x = 1.5;
+			enemy_5.y = 2.5;
+			enemy_4.is_alive = 0;
 			switch_boxes(boxes3);
 		}else{
 			player_shoot_key = true;
@@ -862,7 +927,6 @@ void draw_score_points_menu() {
 }
 
 void update(int) {  //something like physics proccess in godot
-
 	// Compute dt (time since last frame)
 	static double prev_time = 0;
 	double current_time = glutGet(GLUT_ELAPSED_TIME);
@@ -964,8 +1028,8 @@ void update(int) {  //something like physics proccess in godot
 			enemies[i]->move(dt, dxe, dye);
 
 			if (enemies[i]->type == 1) {
-				for (j = 0; j < sizeof(boxes) / sizeof(boxes[0]); j++) {
-					enemies[i]->checkCollision(boxes[j].x, boxes[j].y, boxes[j].width, boxes[j].height);
+				for (j = 0; j < sizeof(boxes_walking_enemy) / sizeof(boxes_walking_enemy[0]); j++) {
+					enemies[i]->checkCollision(boxes_walking_enemy[j].x, boxes_walking_enemy[j].y, boxes_walking_enemy[j].width, boxes_walking_enemy[j].height);
 					if (checkCollision(player.x, player.y, player.collition_width, player.collition_height, enemies[i]->x - (enemies[i]->collition_width / 2), enemies[i]->y - (enemies[i]->collition_height / 2), enemies[i]->collition_width, enemies[i]->collition_height)) {
 						if (enemies[i]->is_alive) {
 							lifes--;
@@ -1063,32 +1127,22 @@ void drawScene(void)
 		glEnable(GL_TEXTURE_2D);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-
-
 		glPushMatrix();
-
 		player.draw();
-
 		glPopMatrix();
 
 		glPushMatrix();
-
 		for (int i = 0; i < sizeof(enemies) / sizeof(enemies[0]); i++) {
 			if (enemies[i]->is_alive) {
 				enemies[i]->draw();
 			}
 		}
-
 		glPopMatrix();
 
 		glPushMatrix();
-
 		draw_score_points();
 		draw_character_lives();
-
 		glPopMatrix();
-
-
 
 		if (!player_projectiles.empty()) {
 			glPushMatrix();
@@ -1193,21 +1247,41 @@ void drawScene(void)
 			//printf("usp");
 			if (sceen_num == 5) {
 				switch_boxes(boxes3);
+				clear_projectiles();
 				sceen_num = 3;
 				player.x = 0.35;
 				player.y = 0.35;
+
 			}
 			if (sceen_num == 4) {
 				switch_boxes(boxes2);
+				clear_projectiles();
 				sceen_num = 5;
+				populate_fruits();
 				player.x = 0.35;
 				player.y = 0.35;
+				enemy_3.is_alive = 1;
+				enemy_4.x = 0.75;
+				enemy_4.y = 0.35;
+				enemy_4.is_alive = 1;
+				enemy_5.x = 1.5;
+				enemy_5.y = 2.5;
+				enemy_5.is_alive = 0;
 			}
 			if (sceen_num == 1) {
 				switch_boxes(boxes1);
+				clear_projectiles();
 				sceen_num = 4;
+				populate_fruits();
 				player.x = 0.35;
 				player.y = 0.35;
+				enemy_3.is_alive = 1;
+				enemy_4.x = 0.35;
+				enemy_4.y = 1.5;
+				enemy_4.is_alive = 1;
+				enemy_5.x = 1.5;
+				enemy_5.y = 2.5;
+				enemy_5.is_alive = 1;
 			}
 		}
 
@@ -1330,6 +1404,12 @@ const char* filenameArray[19] = {
 
 int main(int argc, char** argv)
 {
+
+	boxes_walking_enemy[0] = Box(0, 0.7, 3, 0.1);
+	boxes_walking_enemy[1] = Box(0, 1.4, 3, 0.1);
+	boxes_walking_enemy[2] = Box(0, 2.1, 3, 0.1);
+	boxes_walking_enemy[3] = Box(0, 0, 0.3, 3);
+	boxes_walking_enemy[4] = Box(2.7, 0, 0.3, 3);
 	//this is starting layout
 	boxes[0] = Box(0, 0, 3, 0.1);
 	boxes[1] = Box(0, 0, 0, 0);  // screen edges
@@ -1400,11 +1480,6 @@ int main(int argc, char** argv)
 	//std::cout << std::endl;
 
 	
-
-
-	//fruits for 
-	Fruit* fruit_inst_1 = new Fruit(1.5, 1.5, 0.15, 0.15);
-	fruits.push_back(fruit_inst_1);
 
 
 
